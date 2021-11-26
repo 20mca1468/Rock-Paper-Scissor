@@ -1,0 +1,314 @@
+package com.example.practical
+
+import android.content.Intent
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.widget.Button
+import android.provider.AlarmClock.EXTRA_MESSAGE
+import android.text.TextUtils
+import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
+import com.example.finalpractical.DatabaseHandler
+
+class MainActivity : AppCompatActivity() {
+    private lateinit var nameField: EditText
+    private lateinit var playButton: Button
+    private lateinit var databaseHandler: DatabaseHandler
+    private lateinit var leaderboardButton: Button
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        databaseHandler= DatabaseHandler(this)
+        nameField=findViewById(R.id.entername)
+        playButton=findViewById(R.id.submit)
+        leaderboardButton=findViewById(R.id.leaderboardButton)
+        playButton.setOnClickListener {
+            val name=nameField.text.toString()
+            if(TextUtils.isEmpty(name)){
+                return@setOnClickListener
+            }
+            val s=Student(name,"0")
+            val status=databaseHandler.addstu(s)
+            if(status > -1){
+                val intent=Intent(this,MainActivity2::class.java)
+                intent.putExtra("name",name)
+                startActivity(intent)
+
+            }
+            else{
+                Toast.makeText(applicationContext,"Username exist", Toast.LENGTH_LONG).show()
+            }
+        }
+
+    }
+}
+
+
+
+MainActivity2.kt (Playground Code)
+
+package com.example.practical
+
+import android.content.Intent
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.provider.AlarmClock.EXTRA_MESSAGE
+import android.util.Log
+import android.view.View
+import android.widget.Button
+import android.widget.TextView
+import com.example.finalpractical.DatabaseHandler
+
+class MainActivity2 : AppCompatActivity() {
+    private lateinit var cpuChoose: TextView
+    private lateinit var scoreTotal: TextView
+    private lateinit var res: TextView
+    private lateinit var youChoose: TextView
+    private lateinit var stoneButton: Button
+    private lateinit var paperButton:Button
+    private lateinit var scissorButton:Button
+    private lateinit var databaseHandler: DatabaseHandler
+    private  var name=""
+    private val STONE=0
+    private val PAPER=1
+    private val SCISSOR=2
+    private val WIN=1
+    private val LOSE=-1
+    private val DRAW=0
+    private var totalScore=0
+    override fun onCreate(savedInstanceState: Bundle?) {
+
+
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main2)
+        val intent= Intent()
+        name=intent.getStringExtra("name").toString()
+        var choosed=-1;
+        var cpuChoosed=-1;
+        databaseHandler= DatabaseHandler(this)
+        cpuChoose=findViewById(R.id.cpuChoose)
+        scoreTotal=findViewById(R.id.score)
+        res=findViewById(R.id.res)
+        youChoose=findViewById(R.id.selected)
+        stoneButton=findViewById(R.id.chooseStone)
+        paperButton=findViewById(R.id.choosePaper)
+        scissorButton=findViewById(R.id.chooseScissor)
+        stoneButton.setOnClickListener {
+            choosed=STONE;
+            cpuChoosed=returnRandom()
+            youChoose.setText("You Choose: Stone")
+            cpuChoose.setText("${getStringName(cpuChoosed)}")
+            var r=choosedOption(choosed,cpuChoosed)
+            result(r)
+            scoreTotal.setText("Your Score: $totalScore")
+            res.setText("${getResultName(r)}")
+
+        }
+        paperButton.setOnClickListener {
+            choosed=PAPER;
+            cpuChoosed=returnRandom()
+            youChoose.setText("You Choose: Paper")
+            cpuChoose.setText("${getStringName(cpuChoosed)}")
+            var r=choosedOption(choosed,cpuChoosed)
+            result(r)
+            scoreTotal.setText("Your Score: $totalScore")
+            res.setText("${getResultName(r)}")
+
+        }
+        scissorButton.setOnClickListener {
+            choosed=SCISSOR;
+            cpuChoosed=returnRandom()
+            youChoose.setText("You Choose: Scissor")
+            cpuChoose.setText("${getStringName(cpuChoosed)}")
+            var r=choosedOption(choosed,cpuChoosed)
+            result(r)
+            scoreTotal.setText("Your Score: $totalScore")
+            res.setText("${getResultName(r)}")
+
+        }
+
+
+
+    }
+    fun getStringName(id:Int):String{
+        if(id==0){
+            return "Stone"
+        }
+        else if(id==1){
+            return "Paper"
+        }
+        else{
+            return "Scissor"
+        }
+    }
+    fun getResultName(id:Int):String{
+        if(id==0){
+            return "Draw"
+        }
+        else if(id==1){
+            return "Win"
+        }
+        else{
+            return "Loss"
+        }
+    }
+    fun returnRandom():Int{
+        val rnds = (0..2).random()
+        Log.d("random","random ${rnds}")
+        return rnds
+    }
+
+    fun choosedOption(you:Int,cpu:Int):Int{
+        if(you==STONE){
+            if(cpu==STONE){
+                return DRAW
+            }
+            else if(cpu==PAPER){
+                return LOSE
+            }
+            else{
+                return WIN
+            }
+        }
+        else if(you==PAPER){
+            if(cpu==PAPER){
+                return DRAW
+            }
+            else if(cpu==SCISSOR){
+                return LOSE
+            }
+            else{
+                return WIN
+            }
+        }
+        else{
+            if(cpu==SCISSOR){
+                return DRAW
+            }
+            else if(cpu==STONE){
+                return LOSE
+            }
+            else{
+                return WIN
+            }
+        }
+    }
+
+    fun result(r:Int){
+        if(r==WIN){
+            totalScore+=10;
+        }
+        else if(r==LOSE){
+            totalScore-=10;
+        }
+        val s= Student(name,totalScore.toString())
+        databaseHandler.updatestu(s)
+
+    }
+}
+
+
+DatabaseHandler.kt
+
+package com.example.finalpractical
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
+import android.content.ContentValues
+import android.database.Cursor
+import android.database.sqlite.SQLiteException
+import com.example.practical.Student
+
+//creating the database logic, extending the SQLiteOpenHelper base class
+class DatabaseHandler(context: Context): SQLiteOpenHelper(context,DATABASE_NAME,null,DATABASE_VERSION) {
+    companion object {
+        private val DATABASE_VERSION = 1
+        private val DATABASE_NAME = "sDatabase"
+        private val TABLE_CONTACTS = "student"
+        private val KEY_ID = "id"
+        private val KEY_NAME = "name"
+        private val KEY_SCORE = "score"
+    }
+    override fun onCreate(db: SQLiteDatabase?) {
+        // TODO("not implemented") //To change body of created functions use File | Settings | File Tstulates.
+        //creating table with fields
+        val CREATE_CONTACTS_TABLE = ("CREATE TABLE " + TABLE_CONTACTS + "("
+                + KEY_NAME + " TEXT PRIMARY KEY,"
+                + KEY_SCORE + " TEXT" + ")")
+        db?.execSQL(CREATE_CONTACTS_TABLE)
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
+        //  TODO("not implemented") //To change body of created functions use File | Settings | File Tstulates.
+        db!!.execSQL("DROP TABLE IF EXISTS " + TABLE_CONTACTS)
+        onCreate(db)
+    }
+
+
+    //method to insert data
+    fun addstu(stu: Student):Long{
+        val db = this.writableDatabase
+        val contentValues = ContentValues()
+
+        contentValues.put(KEY_NAME, stu.name) // Student Name
+        contentValues.put(KEY_SCORE,stu.score ) // Student Phone
+        // Inserting Row
+        val success = db.insert(TABLE_CONTACTS, null, contentValues)
+        //2nd argument is String containing nullColumnHack
+        db.close() // Closing database connection
+        return success
+    }
+    //method to read data
+    @SuppressLint("Range")
+    fun viewstu():MutableList<Student>{
+        val stuList:MutableList<Student> = mutableListOf()
+        val selectQuery = "SELECT  * FROM $TABLE_CONTACTS"
+        val db = this.readableDatabase
+        var cursor: Cursor? = null
+        try{
+            cursor = db.rawQuery(selectQuery, null)
+        }catch (e: SQLiteException) {
+            db.execSQL(selectQuery)
+            return ArrayList()
+        }
+        var userName: String
+        var userscore: String
+        if (cursor.moveToFirst()) {
+            do {
+                userName = cursor.getString(cursor.getColumnIndex("name"))
+                userscore = cursor.getString(cursor.getColumnIndex("score"))
+                val stu= Student( name = userName, score = userscore)
+                stuList.add(stu)
+            } while (cursor.moveToNext())
+        }
+        return stuList
+    }
+
+    @SuppressLint("Range")
+    fun viewstuById():Student{
+        val stu:Student = Student()
+        val selectQuery = "SELECT  * FROM $TABLE_CONTACTS "
+        val db = this.readableDatabase
+        var cursor: Cursor? = null
+        try{
+            cursor = db.rawQuery(selectQuery, null)
+        }catch (e: SQLiteException) {
+            db.execSQL(selectQuery)
+            return Student()
+        }
+        var userName: String
+        var userscore: String
+        if (cursor.moveToFirst()) {
+            do {
+
+                userName = cursor.getString(cursor.getColumnIndex("name"))
+                userscore = cursor.getString(cursor.getColumnIndex("score"))
+                val stu= Student( name = userName, score = userscore)
+
+            } while (cursor.moveToNext())
+        }
+        return stu
+    }
